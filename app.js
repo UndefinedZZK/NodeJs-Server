@@ -74,7 +74,7 @@ function createPatient(requestData)
       method: 'POST',
       json: requestData,
        headers:{
-        'Authorization': 'Basic ' + new Buffer("nodejs:[]Uclactive15").toString('base64')
+        'Authorization': 'Basic ' + new Buffer("*****:*****").toString('base64')
        } 
     };
 
@@ -100,7 +100,7 @@ function sendRequest(requestData)
       method: 'POST',
       json: requestData,
        headers:{
-        'Authorization': 'Basic ' + new Buffer("nodejs:[]Uclactive15").toString('base64')
+        'Authorization': 'Basic ' + new Buffer("*****:******").toString('base64')
        } 
     };
 

@@ -31,3 +31,5 @@ $ use nodetest2
 ```sh
 $ npm start
 ```
+
+For a complete documentation of how to set up please see [this article](http://cwbuecheler.com/web/tutorials/2014/restful-web-app-node-express-mongodb/)

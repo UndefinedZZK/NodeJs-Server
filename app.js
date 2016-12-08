@@ -41,59 +41,46 @@ function queue(QueueName, requestData) {
 	 queueService.createQueueIfNotExists(QueueName, function(error, result, response){
         if(!error)
         {
-			if(result.created)
-				console.log("Just created the queue: " + QueueName);
-			else
-				console.log("Your queue " + QueueName+ " exists already!");
-			
+			if(result.created){console.log("Just created the queue: " + QueueName);}
+			else{console.log("Your queue " + QueueName+ " exists already!");}
 			//console.log("Trying to insert: ", requestData);
 			
-			
+			// Inserts a new message to queue
+			queueService.createMessage(QueueName, requestData, function(error, result, response){
+				if(!error){console.log("Your messaged was insterted into the queue");}
+				else{console.log("ERROR!!!!!!!");}  
+			}); 
 			
 			// Prints the last message from the queue
 			queueService.peekMessages(QueueName, function(error, result, response){
-			  if(!error){
-				  console.log("Last message inserted in the queue ", result);
-			  }
+			  if(!error){console.log("Last message inserted in the queue ", result);}
 			});
 
 			
 			// Deletes the last message from the queue
-			/*queueService.getMessages(QueueName, function(error, result, response){
+			/*
+			queueService.getMessages(QueueName, function(error, result, response){
 			  if(!error){
-				// Message text is in messages[0].messageText
 				var message = result[0];
 				//console.log ("Message to be deleted ", message);
 				
 				queueService.deleteMessage(QueueName, message.messageId, message.popReceipt, function(error, response){
-				  if(!error){
-					console.log("Deleted the last message");
-				  }
-				  else {
-					  console.log("Couldn't delete the message");
-				  }
+				  if(!error){console.log("Deleted the last message");}
+				  else{console.log("Couldn't delete the message");}
 				});
-				
 			  }
-			});*/
-			
-			
-			// Inserts a new message to queue
-			queueService.createMessage(QueueName, requestData, function(error, result, response){
-				if(!error){
-					console.log("Your messaged was insterted into the queue");
-				}
-				else {
-					console.log("ERROR!!!!!!!");
-				}  
 			});
+			*/
 			
-        }
-        else
-        {
-            console.log("error: " + error);
-
-        }
+			// Delete a queue 
+			/*
+			queueService.deleteQueue("sasa", function(error, response){
+			  if(!error){console.log ("Queue was deleted! :D");}
+			  else {console.log("Couldn't delete queue! :(")}
+			});
+			*/
+			
+        }else{console.log("error: " + error);}
     });
 }
 

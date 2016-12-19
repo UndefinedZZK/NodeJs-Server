@@ -10,6 +10,11 @@ Node Server for [UCLActive](https://github.com/DianaD96/UCL-Active).
 ```sh
 $ npm update -g express
 $ npm update -g express-generator
+$ npm install babyparse
+$ npm install fs
+$ npm install util
+$ npm install stream
+$ npm install even-stream
 $ express nodetest2
 ```
 + In the nodetest2 folder

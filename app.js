@@ -15,6 +15,7 @@ var app = express();
 var azure = require('azure-storage');
 var uuid = require('node-uuid');
 
+
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
@@ -27,6 +28,59 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+
+
+// IMPORTANT!!! - COMMENT THIS SECTION IF THE CSV WAS ALREADY PARSED AND SAVED INTO MONGO - OTHERWISE IT WILL BE IMPORTED AGAIN
+// uses stream&pipe 
+// RAM usage < 60mb
+// <--------------------PARSE LARGE CSV--------------------------------------->
+var Papa = require('babyparse');
+var fs = require('fs')
+	, util = require('util')
+    , stream = require('stream')
+    , es = require('event-stream');
+	
+var lineNr = 0;
+var file = 'CSVs/vGymSwipeGM.csv';
+var obj;
+
+var s = fs.createReadStream(file)
+    .pipe(es.split())
+	.pipe(es.stringify())
+    .pipe(es.mapSync(function(line){
+
+        // pause the readstream
+        s.pause();
+
+        lineNr += 1;
+
+        // process line here and call s.resume() when rdy
+        // function below was for logging memory usage
+        //logMemoryUsage(lineNr);
+
+		console.log("Row ", lineNr, " : ", line);
+
+        // resume the readstream, possibly from a callback
+        s.resume();
+		
+		if(lineNr==3)
+			s.pause();
+    })
+    .on('error', function(){
+        console.log('Error while reading file.');
+    })
+    .on('end', function(){
+        console.log('Read entire file.')
+    })
+);
+
+/*
+var content = fs.readFileSync(file, { encoding: 'binary' });
+Papa.parse(content, {
+    step: function(row){
+        console.log("Row: ", row.data);
+    }
+}); */
 
 // <--------------------AZURE STUFF------------------------------------------->
 

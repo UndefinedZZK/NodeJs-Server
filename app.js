@@ -28,12 +28,112 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// This will parse a delimited string into an array of
+// arrays. The default delimiter is the comma, but this
+// can be overridden in the second argument.
+function CSVToArray(strData, strDelimiter) {
+    // Check to see if the delimiter is defined. If not,
+    // then default to comma.
+    strDelimiter = (strDelimiter || ",");
+    // Create a regular expression to parse the CSV values.
+    var objPattern = new RegExp((
+    // Delimiters.
+    "(\\" + strDelimiter + "|\\r?\\n|\\r|^)" +
+    // Quoted fields.
+    "(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|" +
+    // Standard fields.
+    "([^\"\\" + strDelimiter + "\\r\\n]*))"), "gi");
+    // Create an array to hold our data. Give the array
+    // a default empty first row.
+    var arrData = [[]];
+    // Create an array to hold our individual pattern
+    // matching groups.
+    var arrMatches = null;
+    // Keep looping over the regular expression matches
+    // until we can no longer find a match.
+    while (arrMatches = objPattern.exec(strData)) {
+        // Get the delimiter that was found.
+        var strMatchedDelimiter = arrMatches[1];
+        // Check to see if the given delimiter has a length
+        // (is not the start of string) and if it matches
+        // field delimiter. If id does not, then we know
+        // that this delimiter is a row delimiter.
+        if (strMatchedDelimiter.length && (strMatchedDelimiter != strDelimiter)) {
+            // Since we have reached a new row of data,
+            // add an empty row to our data array.
+            arrData.push([]);
+          }
+        // Now that we have our delimiter out of the way,
+        // let's check to see which kind of value we
+        // captured (quoted or unquoted).
+        if (arrMatches[2]) {
+            // We found a quoted value. When we capture
+            // this value, unescape any double quotes.
+            var strMatchedValue = arrMatches[2].replace(
+              new RegExp("\"\"", "g"), "\"");
+          } else {
+            // We found a non-quoted value.
+            var strMatchedValue = arrMatches[3];
+          }
+        // Now that we have our value string, let's add
+        // it to the data array.
+        arrData[arrData.length - 1].push(strMatchedValue);
+      }
+    // Return the parsed data.
+    return (arrData);
+  }
+  
+  //CSV to JSON
+  function CSV2JSON(csv) {
+    var array = CSVToArray(csv);
+    var objArray = [];
+    for (var i = 1; i < array.length; i++) {
+      objArray[i - 1] = {};
+      for (var k = 0; k < array[0].length && k < array[i].length; k++) {
+        var key = array[0][k];
+        objArray[i - 1][key] = array[i][k]
+      }
+    }
 
+    var json = JSON.stringify(objArray);
+    var str = json.replace(/},/g, "},\r\n");
+
+    return str;
+  }
 
 // IMPORTANT!!! - COMMENT THIS SECTION IF THE CSV WAS ALREADY PARSED AND SAVED INTO MONGO - OTHERWISE IT WILL BE IMPORTED AGAIN
 // uses stream&pipe 
 // RAM usage < 60mb
 // <--------------------PARSE LARGE CSV--------------------------------------->
+
+var csv = require('csv-parser')
+var fs = require('fs')
+		, es = require('event-stream');
+var file = 'CSVs/vGymSwipeGM.csv';
+var lineNr = 0;
+
+
+var stream = csv(['Swipes', 'Gender', 'Post_Out_Code', 'MemberID_Hash', 'Year_Of_Birth', 'Member_Key_Hash', 'SITE_NAME', 'Time_Key', 'Swipe_DateTime', 'Date_Key', 'TRANSACTION_EVENT_KEY'])
+
+var s = fs.createReadStream(file)
+  .pipe(stream)
+  .on('data', function (data) {	
+	s.pause();
+
+    lineNr += 1;
+	if(lineNr!=1)
+		console.log('Row %s: Swipes %s Gender %s Post_Out_Code %s MemberID_Hash %s Year_Of_Birth %s Member_Key_Hash %s SITE_NAME %s Time_Key %s Date_Key %s TRANSACTION_EVENT_KEY %s' , lineNr, data.Swipes, data.Gender, data.Post_Out_Code, data.MemberID_Hash, data.Year_Of_Birth, data.Member_Key_Hash, data.SITE_NAME, data.Time_Key, data.Date_Key, data.TRANSACTION_EVENT_KEY);
+
+
+	s.resume();
+	
+	if(lineNr==4)
+		s.pause();
+  })
+
+/*
+// Method II - Using Papa Parse 
+
 var Papa = require('babyparse');
 var fs = require('fs')
 	, util = require('util')
@@ -46,7 +146,7 @@ var obj;
 
 var s = fs.createReadStream(file)
     .pipe(es.split())
-	.pipe(es.stringify())
+	//.pipe(es.stringify())
     .pipe(es.mapSync(function(line){
 
         // pause the readstream
@@ -59,6 +159,10 @@ var s = fs.createReadStream(file)
         //logMemoryUsage(lineNr);
 
 		console.log("Row ", lineNr, " : ", line);
+		
+		
+		//var array = CSV2JSON(line);
+		//console.log("Array ", lineNr, " : ", JSON.parse(CSV2JSON(line)));
 
         // resume the readstream, possibly from a callback
         s.resume();
@@ -72,7 +176,7 @@ var s = fs.createReadStream(file)
     .on('end', function(){
         console.log('Read entire file.')
     })
-);
+);*/
 
 /*
 var content = fs.readFileSync(file, { encoding: 'binary' });

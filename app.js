@@ -122,8 +122,14 @@ var s = fs.createReadStream(file)
 
     lineNr += 1;
 	if(lineNr!=1)
+	{
 		console.log('Row %s: Swipes %s Gender %s Post_Out_Code %s MemberID_Hash %s Year_Of_Birth %s Member_Key_Hash %s SITE_NAME %s Time_Key %s Date_Key %s TRANSACTION_EVENT_KEY %s' , lineNr, data.Swipes, data.Gender, data.Post_Out_Code, data.MemberID_Hash, data.Year_Of_Birth, data.Member_Key_Hash, data.SITE_NAME, data.Time_Key, data.Date_Key, data.TRANSACTION_EVENT_KEY);
-
+		var JSON = "{\"collection\":\"observations\",\"content\":{\"Swipes\":\"" + data.Swipes + "\",\"Gender\":\"" + data.Gender + "\",\"Post_Out_Code\":\"" + data.Post_Out_Code + "\",\"MemberID_Hash\":\"" + data.MemberID_Hash + "\",\"Year_Of_Birth\":\"" + data.Year_Of_Birth + "\",\"Member_Key_Hash\":\"" + data.Member_Key_Hash + "\",\"SITE_NAME\":\"" + data.SITE_NAME + "\",\"Time_Key\":\"" + data.Time_Key + "\",\"Swipe_DateTime\":\"" + data.Date_Key + "\",\"Date_Key\":\"" + data.Date_Key + "\",\"TRANSACTION_EVENT_KEY\":\"" + data.TRANSACTION_EVENT_KEY + "\"}}"
+		console.log('JSON: %s', JSON);
+		
+		// sending to azure queue
+		queue('v44hnc76pf', JSON);
+	}
 
 	s.resume();
 	

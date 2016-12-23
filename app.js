@@ -28,78 +28,49 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// This will parse a delimited string into an array of
-// arrays. The default delimiter is the comma, but this
-// can be overridden in the second argument.
-function CSVToArray(strData, strDelimiter) {
-    // Check to see if the delimiter is defined. If not,
-    // then default to comma.
-    strDelimiter = (strDelimiter || ",");
-    // Create a regular expression to parse the CSV values.
-    var objPattern = new RegExp((
-    // Delimiters.
-    "(\\" + strDelimiter + "|\\r?\\n|\\r|^)" +
-    // Quoted fields.
-    "(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|" +
-    // Standard fields.
-    "([^\"\\" + strDelimiter + "\\r\\n]*))"), "gi");
-    // Create an array to hold our data. Give the array
-    // a default empty first row.
-    var arrData = [[]];
-    // Create an array to hold our individual pattern
-    // matching groups.
-    var arrMatches = null;
-    // Keep looping over the regular expression matches
-    // until we can no longer find a match.
-    while (arrMatches = objPattern.exec(strData)) {
-        // Get the delimiter that was found.
-        var strMatchedDelimiter = arrMatches[1];
-        // Check to see if the given delimiter has a length
-        // (is not the start of string) and if it matches
-        // field delimiter. If id does not, then we know
-        // that this delimiter is a row delimiter.
-        if (strMatchedDelimiter.length && (strMatchedDelimiter != strDelimiter)) {
-            // Since we have reached a new row of data,
-            // add an empty row to our data array.
-            arrData.push([]);
-          }
-        // Now that we have our delimiter out of the way,
-        // let's check to see which kind of value we
-        // captured (quoted or unquoted).
-        if (arrMatches[2]) {
-            // We found a quoted value. When we capture
-            // this value, unescape any double quotes.
-            var strMatchedValue = arrMatches[2].replace(
-              new RegExp("\"\"", "g"), "\"");
-          } else {
-            // We found a non-quoted value.
-            var strMatchedValue = arrMatches[3];
-          }
-        // Now that we have our value string, let's add
-        // it to the data array.
-        arrData[arrData.length - 1].push(strMatchedValue);
-      }
-    // Return the parsed data.
-    return (arrData);
-  }
+
+
+// <---------------------GETTING DATA FROM MONGO------------------------------>
+//Quering data from MongoDB
+var MongoClient = require('mongodb').MongoClient
+  , assert = require('assert');
+
+// Connection URL
+var url = 'mongodb://localhost:27017/test';
+// Use connect method to connect to the Server
+MongoClient.connect(url, function(err, db) {
+  assert.equal(null, err);
+  console.log("Connected to the MongoDB Server");
   
-  //CSV to JSON
-  function CSV2JSON(csv) {
-    var array = CSVToArray(csv);
-    var objArray = [];
-    for (var i = 1; i < array.length; i++) {
-      objArray[i - 1] = {};
-      for (var k = 0; k < array[0].length && k < array[i].length; k++) {
-        var key = array[0][k];
-        objArray[i - 1][key] = array[i][k]
+  
+	// Get the documents collection
+    var collection = db.collection('observations');
+
+    //We have a cursor now with our find criteria
+    var cursor = collection.find({});
+
+    //We need to sort by age descending
+    cursor.sort({Post_Out_Code: -1});
+
+    //Limit to max 10 records
+    cursor.limit(1000);
+
+    //Skip specified records. 0 for skipping 0 records.
+    cursor.skip(0);
+
+	var ok = 0;
+    //Lets iterate on the result
+    cursor.each(function (err, doc) {
+      if (err) {
+        console.log(err);
+		db.close();
+      } else {
+        console.log('\n\nFetched:', ok, doc);
+		ok += 1;
       }
-    }
+    });
+});
 
-    var json = JSON.stringify(objArray);
-    var str = json.replace(/},/g, "},\r\n");
-
-    return str;
-  }
 
 // IMPORTANT!!! - COMMENT THIS SECTION IF THE CSV WAS ALREADY PARSED AND SAVED INTO MONGO - OTHERWISE IT WILL BE IMPORTED AGAIN
 // uses stream&pipe 
@@ -115,6 +86,7 @@ var lineNr = 0;
 
 var stream = csv(['Swipes', 'Gender', 'Post_Out_Code', 'MemberID_Hash', 'Year_Of_Birth', 'Member_Key_Hash', 'SITE_NAME', 'Time_Key', 'Swipe_DateTime', 'Date_Key', 'TRANSACTION_EVENT_KEY'])
 
+/*
 var s = fs.createReadStream(file)
   .pipe(stream)
   .on('data', function (data) {	
@@ -132,11 +104,13 @@ var s = fs.createReadStream(file)
 	}
 
 	s.resume();
-	
-	if(lineNr==4)
+	 
+	if(lineNr==1000)
 		s.pause();
   })
-
+*/
+  
+  
 /*
 // Method II - Using Papa Parse 
 

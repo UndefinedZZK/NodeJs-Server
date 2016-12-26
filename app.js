@@ -162,6 +162,102 @@ function queue(QueueName, requestData) {
     });
 }
 
+
+//<-----------------MONGO QUERIES---------------------------------------------------------->
+
+var mongodb = require('mongodb');
+
+//We need to work with "MongoClient" interface in order to connect to a mongodb server.
+var MongoClient = mongodb.MongoClient;
+
+// Connection URL. This is where your mongodb server is running.
+var url = 'mongodb://localhost:27017/test';
+
+// Use connect method to connect to the Server
+MongoClient.connect(url, function (err, db) {
+  if (err) {
+    console.log('Unable to connect to the mongoDB server. Error:', err);
+  } else {
+    //HURRAY!! We are connected. :)
+    console.log('Connection established to', url);
+
+	// Get the documents collection
+    var collection = db.collection('observations');
+	
+	// Get the user's number of swipes from a given month
+	collection
+	.aggregate(
+	  [{$match: {"content.MemberID_Hash": "E35E015EBFF1E1A20C6345C36B7FA9F1", "content.Swipe_DateTime": {$regex:"201602"}}},
+	  {$group: {_id: null, count:{$sum: 1}}}],
+	  function(err,result) {
+		  console.log("User's number of swipes from last month: ", result[0].count);
+		  findUserRank(result[0].count);
+		  getNeighbouringValues(result[0].count);
+	  });
+	}
+});
+
+function findUserRank(user_swipes_month) {
+	MongoClient.connect(url, function (err, db) {
+		if (err) {
+			console.log('Unable to connect to the mongoDB server. Error:', err);
+		} else {
+
+			// Get the documents collection
+			var collection = db.collection('observations');
+	
+			collection
+			.aggregate(
+			[{$match: {"content.Swipe_DateTime": {$regex:"201602"}}},
+			{$group: {_id: "$content.MemberID_Hash", count:{$sum: 1}}},
+			{$sort: {count: 1}},
+			{$match: {count: {$lte: user_swipes_month}}},
+			{$group: {_id: null, count:{$sum: 1}}}],
+			function(err,result) {
+				console.log("User's Rank: ", result[0].count);
+			});
+		}
+	});
+}
+
+function getNeighbouringValues(user_swipes_month) {
+	
+	// Use connect method to connect to the Server
+	MongoClient.connect(url, function (err, db) {
+		if (err) {
+			console.log('Unable to connect to the mongoDB server. Error:', err);
+		} else {
+
+			// Get the documents collection
+			var collection = db.collection('observations');
+	
+			// Get First 5 users with nrSwipes < user's nrSwipes
+			collection
+			.aggregate(
+			[{$match: {"content.Swipe_DateTime": {$regex:"201602"}}},
+			{$group: {_id: "$content.MemberID_Hash", count:{$sum: 1}}},
+			{$sort: {count: 1}},
+			{$match: {count: {$lte: user_swipes_month}}},
+			{$limit : 5 }],
+			function(err,result) {
+				console.log(result);
+			});
+			
+			collection
+			.aggregate(
+			[{$match: {"content.Swipe_DateTime": {$regex:"201602"}}},
+			{$group: {_id: "$content.MemberID_Hash", count:{$sum: 1}}},
+			{$sort: {count: -1}},
+			{$match: {count: {$gte: user_swipes_month}}},
+			{$limit : 5 }],
+			function(err,result) {
+				console.log(result);
+			});
+		}
+	});
+}
+   
+
 //<-----------------DATA FLOW FROM/TO DasboardWebbApp---------------------------------------->
 // Saving Data
 app.post('/query', function(request, response) {
@@ -169,7 +265,8 @@ app.post('/query', function(request, response) {
 
       console.log("TESTING......")
       console.log("This is your request: ", request.body);
-      console.log("\nGiven Name: ", request.body.name); 	 
+      console.log("\nMemberID_Hash: ", request.body.MemberID_Hash); 	 
+      console.log("\Date_Key_Month: ", request.body.Date_Key_Month); 	 
 
 	 console.log("This is your request: ", JSON.stringify(request.body));
 	 

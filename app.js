@@ -29,54 +29,49 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 
+app.all('*', function(req, res,next) {
+
+
+    /**
+     * Response settings
+     * @type {Object}
+     */
+    var responseSettings = {
+        "AccessControlAllowOrigin": req.headers.origin,
+        "AccessControlAllowHeaders": "Content-Type,X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5,  Date, X-Api-Version, X-File-Name",
+        "AccessControlAllowMethods": "POST, GET, PUT, DELETE, OPTIONS",
+        "AccessControlAllowCredentials": true
+    };
+
+    /**
+     * Headers
+     */
+    res.header("Access-Control-Allow-Credentials", responseSettings.AccessControlAllowCredentials);
+    res.header("Access-Control-Allow-Origin",  responseSettings.AccessControlAllowOrigin);
+    res.header("Access-Control-Allow-Headers", (req.headers['access-control-request-headers']) ? req.headers['access-control-request-headers'] : "x-requested-with");
+    res.header("Access-Control-Allow-Methods", (req.headers['access-control-request-method']) ? req.headers['access-control-request-method'] : responseSettings.AccessControlAllowMethods);
+
+    if ('OPTIONS' == req.method) {
+        res.send(200);
+    }
+    else {
+        next();
+    }
+
+
+});
 
 // <---------------------GETTING DATA FROM MONGO------------------------------>
 //Quering data from MongoDB
 var MongoClient = require('mongodb').MongoClient
   , assert = require('assert');
 
-// Connection URL
-var url = 'mongodb://localhost:27017/test';
-// Use connect method to connect to the Server
-MongoClient.connect(url, function(err, db) {
-  assert.equal(null, err);
-  console.log("Connected to the MongoDB Server");
-  
-  
-	// Get the documents collection
-    var collection = db.collection('observations');
-
-    //We have a cursor now with our find criteria
-    var cursor = collection.find({});
-
-    //We need to sort by age descending
-    cursor.sort({Post_Out_Code: -1});
-
-    //Limit to max 10 records
-    cursor.limit(1000);
-
-    //Skip specified records. 0 for skipping 0 records.
-    cursor.skip(0);
-
-	var ok = 0;
-    //Lets iterate on the result
-    cursor.each(function (err, doc) {
-      if (err) {
-        console.log(err);
-		db.close();
-      } else {
-        console.log('\n\nFetched:', ok, doc);
-		ok += 1;
-      }
-    });
-});
-
 
 // IMPORTANT!!! - COMMENT THIS SECTION IF THE CSV WAS ALREADY PARSED AND SAVED INTO MONGO - OTHERWISE IT WILL BE IMPORTED AGAIN
 // uses stream&pipe 
 // RAM usage < 60mb
 // <--------------------PARSE LARGE CSV--------------------------------------->
-
+/*
 var csv = require('csv-parser')
 var fs = require('fs')
 		, es = require('event-stream');
@@ -86,7 +81,7 @@ var lineNr = 0;
 
 var stream = csv(['Swipes', 'Gender', 'Post_Out_Code', 'MemberID_Hash', 'Year_Of_Birth', 'Member_Key_Hash', 'SITE_NAME', 'Time_Key', 'Swipe_DateTime', 'Date_Key', 'TRANSACTION_EVENT_KEY'])
 
-/*
+
 var s = fs.createReadStream(file)
   .pipe(stream)
   .on('data', function (data) {	
@@ -105,66 +100,11 @@ var s = fs.createReadStream(file)
 
 	s.resume();
 	 
-	if(lineNr==1000)
-		s.pause();
+	//if(lineNr==1000)
+	//	s.pause();
   })
 */
   
-  
-/*
-// Method II - Using Papa Parse 
-
-var Papa = require('babyparse');
-var fs = require('fs')
-	, util = require('util')
-    , stream = require('stream')
-    , es = require('event-stream');
-	
-var lineNr = 0;
-var file = 'CSVs/vGymSwipeGM.csv';
-var obj;
-
-var s = fs.createReadStream(file)
-    .pipe(es.split())
-	//.pipe(es.stringify())
-    .pipe(es.mapSync(function(line){
-
-        // pause the readstream
-        s.pause();
-
-        lineNr += 1;
-
-        // process line here and call s.resume() when rdy
-        // function below was for logging memory usage
-        //logMemoryUsage(lineNr);
-
-		console.log("Row ", lineNr, " : ", line);
-		
-		
-		//var array = CSV2JSON(line);
-		//console.log("Array ", lineNr, " : ", JSON.parse(CSV2JSON(line)));
-
-        // resume the readstream, possibly from a callback
-        s.resume();
-		
-		if(lineNr==3)
-			s.pause();
-    })
-    .on('error', function(){
-        console.log('Error while reading file.');
-    })
-    .on('end', function(){
-        console.log('Read entire file.')
-    })
-);*/
-
-/*
-var content = fs.readFileSync(file, { encoding: 'binary' });
-Papa.parse(content, {
-    step: function(row){
-        console.log("Row: ", row.data);
-    }
-}); */
 
 // <--------------------AZURE STUFF------------------------------------------->
 
@@ -221,6 +161,22 @@ function queue(QueueName, requestData) {
         }else{console.log("error: " + error);}
     });
 }
+
+//<-----------------DATA FLOW FROM/TO DasboardWebbApp---------------------------------------->
+// Saving Data
+app.post('/query', function(request, response) {
+    if(response.statusCode == 200) { 
+
+      console.log("TESTING......")
+      console.log("This is your request: ", request.body);
+      console.log("\nGiven Name: ", request.body.name); 	 
+
+	 console.log("This is your request: ", JSON.stringify(request.body));
+	 
+    }else{
+      response.send(" Error code: " + response.statusCode);
+    }
+});
 
 
 //<-----------------DATA FLOW FROM/TO SWIFT APP---------------------------------------->

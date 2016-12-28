@@ -62,9 +62,6 @@ app.all('*', function(req, res,next) {
 });
 
 // <---------------------GETTING DATA FROM MONGO------------------------------>
-//Quering data from MongoDB
-var MongoClient = require('mongodb').MongoClient
-  , assert = require('assert');
 
 
 // IMPORTANT!!! - COMMENT THIS SECTION IF THE CSV WAS ALREADY PARSED AND SAVED INTO MONGO - OTHERWISE IT WILL BE IMPORTED AGAIN
@@ -166,36 +163,75 @@ function queue(QueueName, requestData) {
 //<-----------------MONGO QUERIES---------------------------------------------------------->
 
 var mongodb = require('mongodb');
-
 //We need to work with "MongoClient" interface in order to connect to a mongodb server.
 var MongoClient = mongodb.MongoClient;
-
 // Connection URL. This is where your mongodb server is running.
 var url = 'mongodb://localhost:27017/test';
-
-// Use connect method to connect to the Server
-MongoClient.connect(url, function (err, db) {
-  if (err) {
-    console.log('Unable to connect to the mongoDB server. Error:', err);
-  } else {
-    //HURRAY!! We are connected. :)
-    console.log('Connection established to', url);
-
-	// Get the documents collection
-    var collection = db.collection('observations');
 	
-	// Get the user's number of swipes from a given month
-	collection
-	.aggregate(
-	  [{$match: {"content.MemberID_Hash": "E35E015EBFF1E1A20C6345C36B7FA9F1", "content.Swipe_DateTime": {$regex:"201602"}}},
-	  {$group: {_id: null, count:{$sum: 1}}}],
-	  function(err,result) {
-		  console.log("User's number of swipes from last month: ", result[0].count);
-		  findUserRank(result[0].count);
-		  getNeighbouringValues(result[0].count);
-	  });
-	}
-});
+function mongoAnalytics(userID, gymMonth) {
+	// Use connect method to connect to the Server
+	MongoClient.connect(url, function (err, db) {
+	  if (err) {
+		console.log('Unable to connect to the mongoDB server. Error:', err);
+	  } else {
+		//HURRAY!! We are connected. :)
+		console.log('Connection established to', url);
+		getMemberID_Hash(5);
+	  }
+	});
+}
+
+function getNrOfSwipes () {
+	MongoClient.connect(url, function (err, db) {
+		if (err) {
+			console.log('Unable to connect to the mongoDB server. Error:', err);
+		} else { 
+		
+			// Get the documents collection
+			var collection = db.collection('observations');
+			// Get the user's number of swipes from a given month
+			collection
+			.aggregate(
+			[{$match: {"content.MemberID_Hash": "E35E015EBFF1E1A20C6345C36B7FA9F1", "content.Swipe_DateTime": {$regex:"201602"}}},
+			{$group: {_id: null, count:{$sum: 1}}}],
+			function(err,result) {
+			  console.log("User's number of swipes from last month: ", result[0].count);
+			  findUserRank(result[0].count);
+			  getNeighbouringValues(result[0].count);
+			});
+ 	    }
+    });
+}
+
+function getMemberID_Hash(limitNumber) {
+	MongoClient.connect(url, function (err, db) {
+	  if (err) {
+		console.log('Unable to connect to the mongoDB server. Error:', err);
+		} else {
+		   // Get the documents collection
+		  
+		  var collection = db.collection('observations');
+		  //We have a cursor now with our find criteria
+		  var ok = 0;
+		  collection.find({}).limit(limitNumber).toArray(function(err, result) { 
+				//	console.log("Fetched ", ok, result[ok].content.MemberID_Hash); ok+=1; 
+				var i = 0;
+				var json = "[";
+				for (i=0; i<limitNumber; i++)
+				{
+					console.log("Fetched ", i, result[i].content.MemberID_Hash);
+					json = json + "{ID:\"" + result[i].content.MemberID_Hash + "\"}";
+					if (i+1<limitNumber)
+						json = json + ",";
+				}
+				json = json + "]";
+				console.log ("JSON: ", json);
+			});
+		  
+			
+		}
+	});
+}
 
 function findUserRank(user_swipes_month) {
 	MongoClient.connect(url, function (err, db) {
@@ -257,7 +293,9 @@ function getNeighbouringValues(user_swipes_month) {
 	});
 }
    
-
+function sendToDashboard(jsonData) {
+	
+}
 //<-----------------DATA FLOW FROM/TO DasboardWebbApp---------------------------------------->
 // Saving Data
 app.post('/query', function(request, response) {
@@ -268,8 +306,9 @@ app.post('/query', function(request, response) {
       console.log("\nMemberID_Hash: ", request.body.MemberID_Hash); 	 
       console.log("\Date_Key_Month: ", request.body.Date_Key_Month); 	 
 
-	 console.log("This is your request: ", JSON.stringify(request.body));
-	 
+	  console.log("This is your request: ", JSON.stringify(request.body));
+	  
+	  mongoAnalytics(request.body.MemberID_Hash,request.body.Date_Key_Month);
     }else{
       response.send(" Error code: " + response.statusCode);
     }

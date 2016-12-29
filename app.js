@@ -28,47 +28,84 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-
-app.all('*', function(req, res,next) {
-
-
-    /**
-     * Response settings
-     * @type {Object}
-     */
-    var responseSettings = {
-        "AccessControlAllowOrigin": req.headers.origin,
-        "AccessControlAllowHeaders": "Content-Type,X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5,  Date, X-Api-Version, X-File-Name",
-        "AccessControlAllowMethods": "POST, GET, PUT, DELETE, OPTIONS",
-        "AccessControlAllowCredentials": true
-    };
-
-    /**
-     * Headers
-     */
-    res.header("Access-Control-Allow-Credentials", responseSettings.AccessControlAllowCredentials);
-    res.header("Access-Control-Allow-Origin",  responseSettings.AccessControlAllowOrigin);
-    res.header("Access-Control-Allow-Headers", (req.headers['access-control-request-headers']) ? req.headers['access-control-request-headers'] : "x-requested-with");
-    res.header("Access-Control-Allow-Methods", (req.headers['access-control-request-method']) ? req.headers['access-control-request-method'] : responseSettings.AccessControlAllowMethods);
-
-    if ('OPTIONS' == req.method) {
-        res.send(200);
+// This will parse a delimited string into an array of
+// arrays. The default delimiter is the comma, but this
+// can be overridden in the second argument.
+function CSVToArray(strData, strDelimiter) {
+    // Check to see if the delimiter is defined. If not,
+    // then default to comma.
+    strDelimiter = (strDelimiter || ",");
+    // Create a regular expression to parse the CSV values.
+    var objPattern = new RegExp((
+    // Delimiters.
+    "(\\" + strDelimiter + "|\\r?\\n|\\r|^)" +
+    // Quoted fields.
+    "(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|" +
+    // Standard fields.
+    "([^\"\\" + strDelimiter + "\\r\\n]*))"), "gi");
+    // Create an array to hold our data. Give the array
+    // a default empty first row.
+    var arrData = [[]];
+    // Create an array to hold our individual pattern
+    // matching groups.
+    var arrMatches = null;
+    // Keep looping over the regular expression matches
+    // until we can no longer find a match.
+    while (arrMatches = objPattern.exec(strData)) {
+        // Get the delimiter that was found.
+        var strMatchedDelimiter = arrMatches[1];
+        // Check to see if the given delimiter has a length
+        // (is not the start of string) and if it matches
+        // field delimiter. If id does not, then we know
+        // that this delimiter is a row delimiter.
+        if (strMatchedDelimiter.length && (strMatchedDelimiter != strDelimiter)) {
+            // Since we have reached a new row of data,
+            // add an empty row to our data array.
+            arrData.push([]);
+          }
+        // Now that we have our delimiter out of the way,
+        // let's check to see which kind of value we
+        // captured (quoted or unquoted).
+        if (arrMatches[2]) {
+            // We found a quoted value. When we capture
+            // this value, unescape any double quotes.
+            var strMatchedValue = arrMatches[2].replace(
+              new RegExp("\"\"", "g"), "\"");
+          } else {
+            // We found a non-quoted value.
+            var strMatchedValue = arrMatches[3];
+          }
+        // Now that we have our value string, let's add
+        // it to the data array.
+        arrData[arrData.length - 1].push(strMatchedValue);
+      }
+    // Return the parsed data.
+    return (arrData);
+  }
+  
+  //CSV to JSON
+  function CSV2JSON(csv) {
+    var array = CSVToArray(csv);
+    var objArray = [];
+    for (var i = 1; i < array.length; i++) {
+      objArray[i - 1] = {};
+      for (var k = 0; k < array[0].length && k < array[i].length; k++) {
+        var key = array[0][k];
+        objArray[i - 1][key] = array[i][k]
+      }
     }
-    else {
-        next();
-    }
 
+    var json = JSON.stringify(objArray);
+    var str = json.replace(/},/g, "},\r\n");
 
-});
-
-// <---------------------GETTING DATA FROM MONGO------------------------------>
-
+    return str;
+  }
 
 // IMPORTANT!!! - COMMENT THIS SECTION IF THE CSV WAS ALREADY PARSED AND SAVED INTO MONGO - OTHERWISE IT WILL BE IMPORTED AGAIN
 // uses stream&pipe 
 // RAM usage < 60mb
 // <--------------------PARSE LARGE CSV--------------------------------------->
-/*
+
 var csv = require('csv-parser')
 var fs = require('fs')
 		, es = require('event-stream');
@@ -77,7 +114,6 @@ var lineNr = 0;
 
 
 var stream = csv(['Swipes', 'Gender', 'Post_Out_Code', 'MemberID_Hash', 'Year_Of_Birth', 'Member_Key_Hash', 'SITE_NAME', 'Time_Key', 'Swipe_DateTime', 'Date_Key', 'TRANSACTION_EVENT_KEY'])
-
 
 var s = fs.createReadStream(file)
   .pipe(stream)
@@ -96,12 +132,65 @@ var s = fs.createReadStream(file)
 	}
 
 	s.resume();
-	 
-	//if(lineNr==1000)
-	//	s.pause();
+	
+	if(lineNr==4)
+		s.pause();
   })
-*/
-  
+
+/*
+// Method II - Using Papa Parse 
+
+var Papa = require('babyparse');
+var fs = require('fs')
+	, util = require('util')
+    , stream = require('stream')
+    , es = require('event-stream');
+	
+var lineNr = 0;
+var file = 'CSVs/vGymSwipeGM.csv';
+var obj;
+
+var s = fs.createReadStream(file)
+    .pipe(es.split())
+	//.pipe(es.stringify())
+    .pipe(es.mapSync(function(line){
+
+        // pause the readstream
+        s.pause();
+
+        lineNr += 1;
+
+        // process line here and call s.resume() when rdy
+        // function below was for logging memory usage
+        //logMemoryUsage(lineNr);
+
+		console.log("Row ", lineNr, " : ", line);
+		
+		
+		//var array = CSV2JSON(line);
+		//console.log("Array ", lineNr, " : ", JSON.parse(CSV2JSON(line)));
+
+        // resume the readstream, possibly from a callback
+        s.resume();
+		
+		if(lineNr==3)
+			s.pause();
+    })
+    .on('error', function(){
+        console.log('Error while reading file.');
+    })
+    .on('end', function(){
+        console.log('Read entire file.')
+    })
+);*/
+
+/*
+var content = fs.readFileSync(file, { encoding: 'binary' });
+Papa.parse(content, {
+    step: function(row){
+        console.log("Row: ", row.data);
+    }
+}); */
 
 // <--------------------AZURE STUFF------------------------------------------->
 
@@ -158,161 +247,6 @@ function queue(QueueName, requestData) {
         }else{console.log("error: " + error);}
     });
 }
-
-
-//<-----------------MONGO QUERIES---------------------------------------------------------->
-
-var mongodb = require('mongodb');
-//We need to work with "MongoClient" interface in order to connect to a mongodb server.
-var MongoClient = mongodb.MongoClient;
-// Connection URL. This is where your mongodb server is running.
-var url = 'mongodb://localhost:27017/test';
-	
-function mongoAnalytics(userID, gymMonth) {
-	// Use connect method to connect to the Server
-	MongoClient.connect(url, function (err, db) {
-	  if (err) {
-		console.log('Unable to connect to the mongoDB server. Error:', err);
-	  } else {
-		//HURRAY!! We are connected. :)
-		console.log('Connection established to', url);
-		getMemberID_Hash(5);
-	  }
-	});
-}
-
-function getNrOfSwipes () {
-	MongoClient.connect(url, function (err, db) {
-		if (err) {
-			console.log('Unable to connect to the mongoDB server. Error:', err);
-		} else { 
-		
-			// Get the documents collection
-			var collection = db.collection('observations');
-			// Get the user's number of swipes from a given month
-			collection
-			.aggregate(
-			[{$match: {"content.MemberID_Hash": "E35E015EBFF1E1A20C6345C36B7FA9F1", "content.Swipe_DateTime": {$regex:"201602"}}},
-			{$group: {_id: null, count:{$sum: 1}}}],
-			function(err,result) {
-			  console.log("User's number of swipes from last month: ", result[0].count);
-			  findUserRank(result[0].count);
-			  getNeighbouringValues(result[0].count);
-			});
- 	    }
-    });
-}
-
-function getMemberID_Hash(limitNumber) {
-	MongoClient.connect(url, function (err, db) {
-	  if (err) {
-		console.log('Unable to connect to the mongoDB server. Error:', err);
-		} else {
-		   // Get the documents collection
-		  
-		  var collection = db.collection('observations');
-		  //We have a cursor now with our find criteria
-		  var ok = 0;
-		  collection.find({}).limit(limitNumber).toArray(function(err, result) { 
-				//	console.log("Fetched ", ok, result[ok].content.MemberID_Hash); ok+=1; 
-				var i = 0;
-				var json = "[";
-				for (i=0; i<limitNumber; i++)
-				{
-					console.log("Fetched ", i, result[i].content.MemberID_Hash);
-					json = json + "{ID:\"" + result[i].content.MemberID_Hash + "\"}";
-					if (i+1<limitNumber)
-						json = json + ",";
-				}
-				json = json + "]";
-				console.log ("JSON: ", json);
-			});
-		  
-			
-		}
-	});
-}
-
-function findUserRank(user_swipes_month) {
-	MongoClient.connect(url, function (err, db) {
-		if (err) {
-			console.log('Unable to connect to the mongoDB server. Error:', err);
-		} else {
-
-			// Get the documents collection
-			var collection = db.collection('observations');
-	
-			collection
-			.aggregate(
-			[{$match: {"content.Swipe_DateTime": {$regex:"201602"}}},
-			{$group: {_id: "$content.MemberID_Hash", count:{$sum: 1}}},
-			{$sort: {count: 1}},
-			{$match: {count: {$lte: user_swipes_month}}},
-			{$group: {_id: null, count:{$sum: 1}}}],
-			function(err,result) {
-				console.log("User's Rank: ", result[0].count);
-			});
-		}
-	});
-}
-
-function getNeighbouringValues(user_swipes_month) {
-	
-	// Use connect method to connect to the Server
-	MongoClient.connect(url, function (err, db) {
-		if (err) {
-			console.log('Unable to connect to the mongoDB server. Error:', err);
-		} else {
-
-			// Get the documents collection
-			var collection = db.collection('observations');
-	
-			// Get First 5 users with nrSwipes < user's nrSwipes
-			collection
-			.aggregate(
-			[{$match: {"content.Swipe_DateTime": {$regex:"201602"}}},
-			{$group: {_id: "$content.MemberID_Hash", count:{$sum: 1}}},
-			{$sort: {count: 1}},
-			{$match: {count: {$lte: user_swipes_month}}},
-			{$limit : 5 }],
-			function(err,result) {
-				console.log(result);
-			});
-			
-			collection
-			.aggregate(
-			[{$match: {"content.Swipe_DateTime": {$regex:"201602"}}},
-			{$group: {_id: "$content.MemberID_Hash", count:{$sum: 1}}},
-			{$sort: {count: -1}},
-			{$match: {count: {$gte: user_swipes_month}}},
-			{$limit : 5 }],
-			function(err,result) {
-				console.log(result);
-			});
-		}
-	});
-}
-   
-function sendToDashboard(jsonData) {
-	
-}
-//<-----------------DATA FLOW FROM/TO DasboardWebbApp---------------------------------------->
-// Saving Data
-app.post('/query', function(request, response) {
-    if(response.statusCode == 200) { 
-
-      console.log("TESTING......")
-      console.log("This is your request: ", request.body);
-      console.log("\nMemberID_Hash: ", request.body.MemberID_Hash); 	 
-      console.log("\Date_Key_Month: ", request.body.Date_Key_Month); 	 
-
-	  console.log("This is your request: ", JSON.stringify(request.body));
-	  
-	  mongoAnalytics(request.body.MemberID_Hash,request.body.Date_Key_Month);
-    }else{
-      response.send(" Error code: " + response.statusCode);
-    }
-});
 
 
 //<-----------------DATA FLOW FROM/TO SWIFT APP---------------------------------------->

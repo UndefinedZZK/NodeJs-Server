@@ -14,7 +14,7 @@ $ npm install babyparse
 $ npm install fs
 $ npm install util
 $ npm install stream
-$ npm install even-stream
+$ npm install event-stream
 $ express nodetest2
 ```
 + In the nodetest2 folder

@@ -15,6 +15,11 @@ var app = express();
 var azure = require('azure-storage');
 var uuid = require('node-uuid');
 
+// <-------------------------PATHS--------------------------------->
+var mongourl = 'mongodb://localhost:27017/test';
+// MEAN Stack Dashboard Server Path
+var dashboardGetQueryJson = "http://localhost:9000/getQueryJson";
+// <--------------------------------------------------------------->
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -166,7 +171,7 @@ var mongodb = require('mongodb');
 //We need to work with "MongoClient" interface in order to connect to a mongodb server.
 var MongoClient = mongodb.MongoClient;
 // Connection URL. This is where your mongodb server is running.
-var url = 'mongodb://localhost:27017/test';
+var url = mongourl;
 	
 function mongoAnalytics(userID, gymMonth) {
 	// Use connect method to connect to the Server
@@ -176,7 +181,9 @@ function mongoAnalytics(userID, gymMonth) {
 	  } else {
 		//HURRAY!! We are connected. :)
 		console.log('Connection established to', url);
-		getNrOfSwipes(userID, gymMonth);
+		//getNrOfSwipes(userID, gymMonth);
+		monthlyStatistics(gymMonth);
+		//getNeighbouringValues(10);
 	  }
 	});
 }
@@ -201,8 +208,9 @@ function getNrOfSwipes (userID, gymMonth) {
                       } else if (!result[0]){ error = 2; console.log("No records found");}
                       if(result && result[0]){
 						  console.log("User's number of swipes from last month: ", result[0].count);
-						  sendToDashboard("TESSSST");
 						  //findUserRank(result[0].count);
+						  var json = {"numberOfSwipes": result[0].count};
+						  sendToDashboard(json);
 						  //getNeighbouringValues(result[0].count);
 					  }
 				 // do smth in case of error 
@@ -275,6 +283,33 @@ function findUserRank(user_swipes_month) {
 	});
 }
 
+function monthlyStatistics (gymMonth){
+	MongoClient.connect(url, function (err, db) {
+		if (err) {
+			console.log('Unable to connect to the mongoDB server. Error:', err);
+		} else {
+			// Get the documents collection
+			var collection = db.collection('observations');
+			
+
+			collection
+			.aggregate(
+				[{"$match": {"content.Swipe_DateTime": {"$regex":""+gymMonth+""}}},
+				{"$group": {"_id": "$content.MemberID_Hash", "nrOfGymSwipes": {"$sum": 1}}},
+				{"$group": {"_id": "$nrOfGymSwipes", "nrOfMembers": {"$sum": 1}}}, 
+				{"$project": {"_id": 0, "nrOfGymSwipes": "$_id", "nrOfMembers": 1}},
+				{"$sort": {"nrOfGymSwipes": 1}}],
+			function(err,result) {
+				 if(err){
+						error = 1;
+                        throw err ;
+                      } else if (!result[0]){ error = 2; console.log("No records found");}
+                      if(result && result[0]){ console.log("Statistics: ", result); }
+			});
+		}
+	});
+}
+
 function getNeighbouringValues(user_swipes_month) {
 	
 	// Use connect method to connect to the Server
@@ -320,12 +355,17 @@ function getNeighbouringValues(user_swipes_month) {
 	});
 }
   
-function sendToDashboard(jsonData) {
-		console.log ("I am here in node: ", jsonData);
+function sendToDashboard(requestData) {
+		console.log ("I am here in node: ", requestData);
 		
 		request({
-		  uri: "http://uclactive.westeurope.cloudapp.azure.com:9000/getQueryJson",
+		  uri: dashboardGetQueryJson,
 		  method: "POST",
+		  json: true,
+		  headers: {
+			"content-type": "application/json",
+		  },
+		  body: requestData,
 		  timeout: 10000,
 		  followRedirect: true,
 		  maxRedirects: 10
@@ -340,15 +380,15 @@ function sendToDashboard(jsonData) {
 app.post('/query', function(request, response) {
     if(response.statusCode == 200) { 
 
-      console.log("TESTING......")
-      console.log("This is your request: ", request.body);
+      console.log("Express: TESTING......")
+      console.log("Express: This is your request: ", request.body);
       console.log("\nMemberID_Hash: ", request.body.MemberID_Hash); 	 
       console.log("\Date_Key_Month: ", request.body.Date_Key_Month); 	 
 
-	  console.log("This is your request: ", JSON.stringify(request.body));
+	  //console.log("This is your request: ", JSON.stringify(request.body));
 	  
-	  response.send("it wooorks");
 	  mongoAnalytics(request.body.MemberID_Hash,request.body.Date_Key_Month);
+	  response.send("success");
     }else{
       response.send(" Error code: " + response.statusCode);
     }

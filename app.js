@@ -527,28 +527,9 @@ app.post('/getNeighbouringValues', function(request, response) {
 // Saving Data
 app.post('/saveUser', function(request, response) {
     if(response.statusCode == 200) { 
-	/*
-      console.log("TESTING......")
-      console.log("This is your request: ", request.body);
-      console.log("\nGiven Name: ", request.body.givenName); 
-      console.log("Family Name: ", request.body.familyName); 
-	  console.log("Sex: ", request.body.sex);  
-	  console.log("Birthdate: ", request.body.birthdate);
-      console.log("Email: ", request.body.email);
-      console.log("Postal Code: ", request.body.postalcode);  
-	  console.log("Country: ", request.body.country);  
-      console.log("Device udid: ", request.body.device_udid); 
-	 */
-	 
-
-	 //console.log("This is your request: ", JSON.stringify(request.body));
 
 	 queue("v44hnc76pf", JSON.stringify(request.body));
-	  
-      //Saving data to Mongo (in progress)
-      // var dataPatient = [{'givenName':request.body.givenName}, {'familyName':request.body.familyName}, {'email':request.body.email}, {'openMRS_uuid':request.body.openMRS_uuid}, {'device_udid':request.body.device_udid}];
-      //response.send("Message received: " + request.body + " Response code: " + response.statusCode);
-      // response.end();
+
     }else{
       response.send(" Error code: " + response.statusCode);
     }

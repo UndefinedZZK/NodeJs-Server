@@ -560,7 +560,7 @@ app.post('/createUser', function(request, response) {
     if(response.statusCode == 200) {
 	  console.log("I AM HEREEEEE " + request.body);
       response.send("Message received: " + request.body + " Response code: " + response.statusCode);
-      //createPatient(request.body); // <-- call to openMRS
+      createPatient(request.body); // <-- call to openMRS
       response.end();
     }else{
 	  console.log("JSON: " + request + " " + response.statusCode);

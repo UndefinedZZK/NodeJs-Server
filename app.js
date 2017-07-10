@@ -593,7 +593,8 @@ app.post("/deleteObs", function(request, response) {
 // Posting Patient to openMRS
 function createPatient(requestData)
 {
-    var url = "http://uclactive.westeurope.cloudapp.azure.com:8080/openmrs/ws/fhir/Patient";
+    //var url = "http://uclactive.westeurope.cloudapp.azure.com:8080/openmrs/ws/fhir/Patient";
+    var url = "http://51.140.66.103:8080/openmrs/ws/fhir/Patient";
 
     var options = {
       uri: url,
@@ -618,7 +619,8 @@ function createPatient(requestData)
 // Posting Observation to openMRS
 function sendRequest(requestData)
 {
-    var url = "http://uclactive.westeurope.cloudapp.azure.com:8080/openmrs/ws/fhir/Observation";
+    //var url = "http://uclactive.westeurope.cloudapp.azure.com:8080/openmrs/ws/fhir/Observation";
+    var url = "http://51.140.66.103:8080/openmrs/ws/fhir/Observation";
 
     var options = {
       uri: url,
@@ -697,7 +699,8 @@ function deleteObservation(requestData)
 // Posting Patient to openMRS
 function createPatient(requestData)
 {
-    var url = "http://uclactiveserver.westeurope.cloudapp.azure.com:8080/openmrs/ws/fhir/Patient";
+    //var url = "http://uclactiveserver.westeurope.cloudapp.azure.com:8080/openmrs/ws/fhir/Patient";
+    var url = "http://51.140.66.103:8080/openmrs/ws/fhir/Patient";
 
     var options = {
       uri: url,
@@ -722,7 +725,8 @@ function createPatient(requestData)
 // Posting Observation to openMRS
 function sendRequest(requestData)
 {
-    var url = "http://uclactiveserver.westeurope.cloudapp.azure.com:8080/openmrs/ws/fhir/Observation";
+    //var url = "http://uclactiveserver.westeurope.cloudapp.azure.com:8080/openmrs/ws/fhir/Observation";
+    var url = "http://51.140.66.103:8080/openmrs/ws/fhir/Observation";
 
     var options = {
       uri: url,
